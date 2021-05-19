@@ -1,0 +1,62 @@
+version: '3.7'
+services:
+
+  minio1:
+    build:
+      context: .
+    ports:
+      - "9091:9000"
+    restart: always
+    volumes:
+      - "./policy/:/policy/"
+      - "./data/minio1/1/:/data/minio1"
+      - "./data/minio1/2/:/data/minio2"
+      - "./data/minio1/3/:/data/minio3"
+      - "./data/minio1/4/:/data/minio4"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_DISK_USAGE_CRAWL_DELAY: 30
+    command: server /data/minio{1...4}/
+
+  minio2:
+    build:
+      context: .
+    ports:
+      - "9092:9000"
+    restart: always
+    volumes:
+      - "./data/minio2/1/:/data/minio1"
+      - "./data/minio2/2/:/data/minio2"
+      - "./data/minio2/3/:/data/minio3"
+      - "./data/minio2/4/:/data/minio4"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_DISK_USAGE_CRAWL_DELAY: 30
+    command: server /data/minio{1...4}/
+
+  mc:
+    image: minio/mc
+    volumes:
+      - "./policy/:/policy/"
+    depends_on:
+      - minio1
+      - minio2
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10s;
+      mc alias set minio1 http://minio1:9000 minio EXAMPLEKEY;
+      mc alias set minio2 http://minio2:9000 minio EXAMPLEKEY;
+      mc mb --ignore-existing minio1/terminal;
+      mc version enable minio1/terminal;
+      mc mb --ignore-existing minio2/terminal;
+      mc version enable minio2/terminal;
+      mc admin policy add minio1 replpolicy /policy/policy1.json;
+      mc admin policy add minio2 replpolicy /policy/policy2.json;
+      mc admin user add minio2 repluser repluserpwd;
+      mc admin policy set minio2 replpolicy user=repluser;
+      mc admin bucket remote add minio1/terminal http://repluser:repluserpwd@minio2:9000/terminal --service "replication";
+      mc replicate add minio1/terminal --remote-bucket terminal --priority 1 --arn arn:minio:replication::bd77145eb97a40c0cd388cce572b8a90920f2b0809e5e3421f3a7a9908941929:terminal;
+      exit 0;
+      "

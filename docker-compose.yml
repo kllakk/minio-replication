@@ -46,7 +46,7 @@ services:
       echo 'Source: https://docs.min.io/minio/baremetal/replication/enable-server-side-two-way-bucket-replication.html';
       sleep 10s;
 
-      echo 'Configure mc Access to the Remote Clusters, create buckets and enable versioning';
+      echo 'Configure mc Access to the Remote Clusters';
       mc alias set $MINIO_ALIAS_1 http://$MINIO_HOST_1 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
       mc alias set $MINIO_ALIAS_2 http://$MINIO_HOST_2 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
 

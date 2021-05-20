@@ -2,8 +2,7 @@ version: '3.7'
 services:
 
   minio1:
-    build:
-      context: .
+    image: minio/minio
     ports:
       - "9091:9000"
     restart: always
@@ -20,8 +19,7 @@ services:
     command: server /data/minio{1...4}/
 
   minio2:
-    build:
-      context: .
+    image: minio/minio
     ports:
       - "9092:9000"
     restart: always
@@ -45,18 +43,33 @@ services:
       - minio2
     entrypoint: >
       /bin/sh -c "
+      echo 'Source: https://docs.min.io/minio/baremetal/replication/enable-server-side-two-way-bucket-replication.html';
       sleep 10s;
-      mc alias set $MINIO_ALIAS_1 http://minio1:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
-      mc alias set $MINIO_ALIAS_2 http://minio2:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
+
+      echo 'Configure mc Access to the Remote Clusters, create buckets and enable versioning';
+      mc alias set $MINIO_ALIAS_1 http://$MINIO_HOST_1 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
+      mc alias set $MINIO_ALIAS_2 http://$MINIO_HOST_2 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
+
+      echo 'Create buckets and enable versioning';
       mc mb --ignore-existing $MINIO_ALIAS_1/$MINIO_BUCKET;
       mc version enable $MINIO_ALIAS_1/$MINIO_BUCKET;
       mc mb --ignore-existing $MINIO_ALIAS_2/$MINIO_BUCKET;
       mc version enable $MINIO_ALIAS_2/$MINIO_BUCKET;
-      mc admin policy add $MINIO_ALIAS_1 replpolicy /policy/policy1.json;
-      mc admin policy add $MINIO_ALIAS_2 replpolicy /policy/policy2.json;
-      mc admin user add $MINIO_ALIAS_2 repluser repluserpwd;
-      mc admin policy set $MINIO_ALIAS_2 replpolicy user=repluser;
-      mc admin bucket remote add $MINIO_ALIAS_1/$MINIO_BUCKET http://repluser:repluserpwd@$MINIO_ALIAS_2:9000/$MINIO_BUCKET --service "replication";
-      mc replicate add $MINIO_ALIAS_1/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --priority 1 --arn arn:minio:replication::bd77145eb97a40c0cd388cce572b8a90920f2b0809e5e3421f3a7a9908941929:terminal;
+
+      echo 'Configure User Accounts and Policies for Replication';
+      mc admin policy add $MINIO_ALIAS_1 ReplicationRemoteUserPolicy /policy/ReplicationRemoteUserPolicy.json;
+      mc admin user add $MINIO_ALIAS_1 $MINIO_REPLICATION_USER $MINIO_REPLICATION_PASSWORD;
+      mc admin policy set $MINIO_ALIAS_1 ReplicationRemoteUserPolicy user=$MINIO_REPLICATION_USER;
+      mc admin policy add $MINIO_ALIAS_2 ReplicationRemoteUserPolicy /policy/ReplicationRemoteUserPolicy.json;
+      mc admin user add $MINIO_ALIAS_2 $MINIO_REPLICATION_USER $MINIO_REPLICATION_PASSWORD;
+      mc admin policy set $MINIO_ALIAS_2 ReplicationRemoteUserPolicy user=$MINIO_REPLICATION_USER;
+
+      echo 'Create a Replication Target for Each Cluster';
+      mc admin bucket remote add $MINIO_ALIAS_1/$MINIO_BUCKET http://$MINIO_REPLICATION_USER:$MINIO_REPLICATION_PASSWORD@$MINIO_HOST_2/$MINIO_BUCKET --service "replication";
+      mc admin bucket remote add $MINIO_ALIAS_2/$MINIO_BUCKET http://$MINIO_REPLICATION_USER:$MINIO_REPLICATION_PASSWORD@$MINIO_HOST_1/$MINIO_BUCKET --service "replication";
+
+      echo 'Create a New Bucket Replication Rule';
+      mc replicate add $MINIO_ALIAS_1/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET;
+      mc replicate add $MINIO_ALIAS_2/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET;
       exit 0;
       "

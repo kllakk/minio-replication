@@ -82,8 +82,8 @@ services:
       mc admin bucket remote add $MINIO_ALIAS_2/$MINIO_BUCKET http://$MINIO_REPLICATION_USER:$MINIO_REPLICATION_PASSWORD@$MINIO_HOST_1/$MINIO_BUCKET --service "replication";
 
       echo 'Create a New Bucket Replication Rule';
-      mc replicate add $MINIO_ALIAS_1/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET;
-      mc replicate add $MINIO_ALIAS_2/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET;
+      mc replicate add $MINIO_ALIAS_1/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET --replicate "delete,delete-marker";
+      mc replicate add $MINIO_ALIAS_2/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET --replicate "delete,delete-marker";
 
       echo 'Configure mc Access to the Source minio server';
       mc alias set $MINIO_ALIAS http://$MINIO_HOST $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;

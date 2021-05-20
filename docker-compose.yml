@@ -1,13 +1,25 @@
 version: '3.7'
 services:
 
+  minio:
+    image: minio/minio
+    ports:
+      - "9090:9000"
+    restart: always
+    volumes:
+      - "./data/minio/:/data/minio"
+    environment:
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_DISK_USAGE_CRAWL_DELAY: 30
+    command: server /data/minio/
+
   minio1:
     image: minio/minio
     ports:
       - "9091:9000"
     restart: always
     volumes:
-      - "./policy/:/policy/"
       - "./data/minio1/1/:/data/minio1"
       - "./data/minio1/2/:/data/minio2"
       - "./data/minio1/3/:/data/minio3"
@@ -38,6 +50,7 @@ services:
     image: minio/mc
     volumes:
       - "./policy/:/policy/"
+      - "./cloud/:/cloud/"
     depends_on:
       - minio1
       - minio2
@@ -71,5 +84,15 @@ services:
       echo 'Create a New Bucket Replication Rule';
       mc replicate add $MINIO_ALIAS_1/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET;
       mc replicate add $MINIO_ALIAS_2/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --arn arn:minio:replication::$MINIO_UUID:$MINIO_BUCKET;
+
+      echo 'Configure mc Access to the Source minio server';
+      mc alias set $MINIO_ALIAS http://$MINIO_HOST $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
+      mc mb --ignore-existing $MINIO_ALIAS/$MINIO_BUCKET/public/;
+      mc policy set public $MINIO_ALIAS/$MINIO_BUCKET/public/;
+      mc cp --recursive /cloud/ $MINIO_ALIAS/$MINIO_BUCKET/;
+      mc cp --recursive /cloud/ $MINIO_ALIAS/$MINIO_BUCKET/public/;
+
+      echo 'Copy files from Source minio';
+      mc cp --recursive $MINIO_ALIAS/terminal $MINIO_ALIAS_1;
       exit 0;
       "

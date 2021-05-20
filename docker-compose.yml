@@ -46,17 +46,17 @@ services:
     entrypoint: >
       /bin/sh -c "
       sleep 10s;
-      mc alias set minio1 http://minio1:9000 minio EXAMPLEKEY;
-      mc alias set minio2 http://minio2:9000 minio EXAMPLEKEY;
-      mc mb --ignore-existing minio1/terminal;
-      mc version enable minio1/terminal;
-      mc mb --ignore-existing minio2/terminal;
-      mc version enable minio2/terminal;
-      mc admin policy add minio1 replpolicy /policy/policy1.json;
-      mc admin policy add minio2 replpolicy /policy/policy2.json;
-      mc admin user add minio2 repluser repluserpwd;
-      mc admin policy set minio2 replpolicy user=repluser;
-      mc admin bucket remote add minio1/terminal http://repluser:repluserpwd@minio2:9000/terminal --service "replication";
-      mc replicate add minio1/terminal --remote-bucket terminal --priority 1 --arn arn:minio:replication::bd77145eb97a40c0cd388cce572b8a90920f2b0809e5e3421f3a7a9908941929:terminal;
+      mc alias set $MINIO_ALIAS_1 http://minio1:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
+      mc alias set $MINIO_ALIAS_2 http://minio2:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY;
+      mc mb --ignore-existing $MINIO_ALIAS_1/$MINIO_BUCKET;
+      mc version enable $MINIO_ALIAS_1/$MINIO_BUCKET;
+      mc mb --ignore-existing $MINIO_ALIAS_2/$MINIO_BUCKET;
+      mc version enable $MINIO_ALIAS_2/$MINIO_BUCKET;
+      mc admin policy add $MINIO_ALIAS_1 replpolicy /policy/policy1.json;
+      mc admin policy add $MINIO_ALIAS_2 replpolicy /policy/policy2.json;
+      mc admin user add $MINIO_ALIAS_2 repluser repluserpwd;
+      mc admin policy set $MINIO_ALIAS_2 replpolicy user=repluser;
+      mc admin bucket remote add $MINIO_ALIAS_1/$MINIO_BUCKET http://repluser:repluserpwd@$MINIO_ALIAS_2:9000/$MINIO_BUCKET --service "replication";
+      mc replicate add $MINIO_ALIAS_1/$MINIO_BUCKET --remote-bucket $MINIO_BUCKET --priority 1 --arn arn:minio:replication::bd77145eb97a40c0cd388cce572b8a90920f2b0809e5e3421f3a7a9908941929:terminal;
       exit 0;
       "
